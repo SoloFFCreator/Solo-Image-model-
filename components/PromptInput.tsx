@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { AspectRatio } from '../types';
 import { ASPECT_RATIOS } from '../constants';
+import { geminiService } from '../services/geminiService';
 
 interface PromptInputProps {
   onGenerate: (prompt: string, aspectRatio: AspectRatio) => void;
@@ -11,6 +12,7 @@ interface PromptInputProps {
 const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isGenerating }) => {
   const [prompt, setPrompt] = useState('');
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>('1:1');
+  const [isEnhancing, setIsEnhancing] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,18 +20,47 @@ const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isGenerating }) =
     onGenerate(prompt, aspectRatio);
   };
 
+  const handleEnhance = async () => {
+    if (!prompt.trim() || isEnhancing) return;
+    setIsEnhancing(true);
+    try {
+      const enhanced = await geminiService.enhancePrompt(prompt);
+      setPrompt(enhanced);
+    } finally {
+      setIsEnhancing(false);
+    }
+  };
+
   return (
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="gradient-border">
           <div className="p-4 md:p-6 bg-neutral-900 rounded-xl flex flex-col gap-4">
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              placeholder="Describe what you want to create... (e.g., 'A futuristic neon city in the style of cyberpunk, ultra detailed, 8k')"
-              className="w-full min-h-[120px] bg-transparent border-none text-white text-lg placeholder-neutral-500 focus:ring-0 resize-none"
-              disabled={isGenerating}
-            />
+            <div className="relative">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                placeholder="Describe what you want to create..."
+                className="w-full min-h-[120px] bg-transparent border-none text-white text-lg placeholder-neutral-500 focus:ring-0 resize-none pr-12"
+                disabled={isGenerating || isEnhancing}
+              />
+              <button
+                type="button"
+                onClick={handleEnhance}
+                disabled={!prompt.trim() || isEnhancing || isGenerating}
+                className={`absolute bottom-2 right-2 p-2 rounded-lg transition-all ${
+                  isEnhancing 
+                    ? 'text-indigo-400 animate-pulse' 
+                    : 'text-neutral-500 hover:text-indigo-400 hover:bg-indigo-500/10'
+                }`}
+                title="Enhance Prompt with AI"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/>
+                  <path d="M5 3v4"/><path d="M3 5h4"/><path d="M19 17v4"/><path d="M17 19h4"/>
+                </svg>
+              </button>
+            </div>
             
             <div className="flex flex-wrap items-center justify-between gap-4 border-t border-neutral-800 pt-4">
               <div className="flex items-center gap-2 overflow-x-auto pb-2 md:pb-0 no-scrollbar">
@@ -54,9 +85,9 @@ const PromptInput: React.FC<PromptInputProps> = ({ onGenerate, isGenerating }) =
 
               <button
                 type="submit"
-                disabled={isGenerating || !prompt.trim()}
+                disabled={isGenerating || isEnhancing || !prompt.trim()}
                 className={`px-8 py-3 rounded-xl font-bold text-sm tracking-wide transition-all shadow-xl flex items-center gap-2 ${
-                  isGenerating || !prompt.trim()
+                  isGenerating || isEnhancing || !prompt.trim()
                     ? 'bg-neutral-800 text-neutral-500 cursor-not-allowed'
                     : 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:scale-105 active:scale-95 shadow-indigo-500/20'
                 }`}
